@@ -1,0 +1,30 @@
+{
+  "productName": "AnonymX",
+  "version": "1.0.0",
+  "identifier": "com.contextguard.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{
+      "title": "AnonymX",
+      "width": 1280,
+      "height": 800,
+      "minWidth": 1024,
+      "minHeight": 680,
+      "resizable": true,
+      "fullscreen": false
+    }],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
+  }
+}

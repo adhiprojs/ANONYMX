@@ -1,0 +1,28 @@
+# Rust build output
+src-tauri/target/
+
+# Node modules
+node_modules/
+
+# Vite build
+dist/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Python venv files (since Anonymx folder has one)
+pyvenv.cfg
+bin/
+lib/
+lib64/
+include/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env

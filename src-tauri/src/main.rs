@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod fuzzer;
@@ -90,7 +91,7 @@ fn run_ner(text: &str) -> Vec<NerEntity> {
     let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("sidecars/ner_engine.py");
 
-    let output = Command::new("python3")
+    let output = Command::new("/home/adhithya/ANONYMX/.venv/bin/python3")
         .arg(&script)
         .arg("--text")
         .arg(text)

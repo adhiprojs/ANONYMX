@@ -55,6 +55,13 @@ fn fuzz_ner_entity(entity: &NerEntity, sensitivity: u8) -> String {
         "LANGUAGE" => entity.original.clone(),
         "NORP" => "[COMMUNITY/GROUP]".to_string(),
         "FAC" => "[FACILITY]".to_string(),
+        "PAN" => "[PAN]".to_string(),
+        "AADHAAR" => "[AADHAAR]".to_string(),
+        "EMAIL" => "[EMAIL]".to_string(),
+        "PHONE" => "[PHONE]".to_string(),
+        "IFSC" => "[IFSC]".to_string(),
+        "IP_ADDR" => "[IP-ADDRESS]".to_string(),
+        "URL" => "[URL]".to_string(),
         "WORK_OF_ART" => "[CREATIVE WORK]".to_string(),
         _ => format!("[{}]", entity.entity_type),
     }

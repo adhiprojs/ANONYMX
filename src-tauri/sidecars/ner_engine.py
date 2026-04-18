@@ -19,7 +19,7 @@ SKIP_LABELS = {"CARDINAL", "ORDINAL", "QUANTITY", "PERCENT", "MONEY", "TIME"}
 INDIAN_NAMES = {
     "arjun","priya","rahul","ananya","vikram","meera","kiran","divya",
     "siddharth","kavya","rohan","aisha","ashvanthan","adhithya","abishek",
-    "suresh","ramesh","ganesh","mahesh","rajesh","dinesh","mukesh",
+    "abinesh","suresh","ramesh","ganesh","mahesh","rajesh","dinesh","mukesh",
     "lakshmi","saraswathi","parvathi","durga","devi","geetha","radha",
     "kumar","shankar","krishna","venkat","narayana","subramanian","murugan",
     "selvam","rajan","mohan","gopal","balaji","senthil","kartik","surya",
@@ -31,6 +31,14 @@ INDIAN_NAMES = {
     "raghu","ravi","sanjay","sathish","shiva","shravan","thilak",
     "udhay","vijay","vinod","yogesh","yuvaraj","adhi","adhith"
 }
+
+PAN_RE = re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]\b')
+AADHAAR_RE = re.compile(r'\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b')
+IFSC_RE = re.compile(r'\b[A-Z]{4}0[A-Z0-9]{6}\b')
+EMAIL_RE = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')
+PHONE_RE = re.compile(r'\b(\+91[\s\-]?)?[6-9]\d{9}\b')
+IP_RE = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+URL_RE = re.compile(r'https?://[^\s]+')
 
 AGE_RE = re.compile(
     r'\b(?:age[sd]?\s+(\d{1,3})|(\d{1,3})\s*[-\s]?year[s]?\s*[-\s]?old|(\d{1,3})\s+yrs?\.?(?:\s+old)?)\b',
@@ -45,20 +53,14 @@ DOB_PHRASE_RE = re.compile(
     re.IGNORECASE
 )
 
-NAMED_RE = re.compile(
-    r'\b(?:named|name\s+is|called|known\s+as)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
-    re.IGNORECASE
-)
-
-# Department patterns — match full phrase including "dept" / "department" suffix
 DEPT_RE = re.compile(
     r'\b('
     r'(?:computer\s*science|cse|c\.s\.e)'
     r'|(?:information\s*technology|it\s*dept|i\.t\.)'
     r'|(?:electrical\s*(?:and\s*)?electronics|eee|e\.e\.e|ece|e\.c\.e)'
     r'|(?:mechanical(?:\s*engg?)?)'
-    r'|(?:civil(?:\s*engg?)?)'
-    r'|(?:chemical(?:\s*engg?)?)'
+    r'|(?:civil(?:\s*engg?)?(?:\s*dept)?)'
+    r'|(?:chemical(?:\s*engg?)?(?:\s*dept)?)'
     r'|(?:biomedical|bio-medical)'
     r'|(?:aerospace|aeronautical)'
     r'|(?:artificial\s*intelligence|ai\s*(?:and|&)\s*ds|ai\s*dept)'
@@ -66,6 +68,22 @@ DEPT_RE = re.compile(
     r'|(?:mathematics?(?:\s*dept)?)'
     r'|(?:management|mba)'
     r')\s*(?:dept(?:artment)?\.?)?',
+    re.IGNORECASE
+)
+
+PERSON_CONTEXT_RE = re.compile(
+    r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+is\s+a\s+(?:boy|girl|man|woman|person|student|child|kid)\b',
+    re.IGNORECASE
+)
+
+NAMED_RE = re.compile(
+    r'\b(?:named|name\s+is|called|known\s+as)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
+    re.IGNORECASE
+)
+
+PII_KEYWORD_RE = re.compile(
+    r'\b(aadhaar|aadhar|pan|passport|ifsc|ration\s*card|voter\s*id|driving\s*licen[sc]e)'
+    r'\s*(?:id|number|no|card|code|num)?\s*(?:is|:)?\s*',
     re.IGNORECASE
 )
 
@@ -80,41 +98,67 @@ def is_likely_person(text):
         return True
     return False
 
+def add_entities(pattern, etype, text, entities, seen):
+    for m in pattern.finditer(text):
+        s, e = m.start(), m.end()
+        if not overlaps(s, e, seen):
+            seen.append((s, e))
+            entities.append({"original": m.group(), "entity_type": etype, "start": s, "end": e})
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--text", required=True)
     args = parser.parse_args()
     text = args.text
-
     entities = []
     seen = []
 
-    # Step 1: AGE
+    # Block PII keyword phrases so spaCy doesn't tag them as ORG
+    for m in PII_KEYWORD_RE.finditer(text):
+        s, e = m.start(), m.end()
+        if not overlaps(s, e, seen):
+            seen.append((s, e))
+
+    # Structured PII before spaCy
+    add_entities(PAN_RE, "PAN", text, entities, seen)
+    add_entities(AADHAAR_RE, "AADHAAR", text, entities, seen)
+    add_entities(EMAIL_RE, "EMAIL", text, entities, seen)
+    add_entities(PHONE_RE, "PHONE", text, entities, seen)
+    add_entities(IFSC_RE, "IFSC", text, entities, seen)
+    add_entities(URL_RE, "URL", text, entities, seen)
+    add_entities(IP_RE, "IP_ADDR", text, entities, seen)
+
+    # AGE before spaCy
     for m in AGE_RE.finditer(text):
         s, e = m.start(), m.end()
         if not overlaps(s, e, seen):
             seen.append((s, e))
             entities.append({"original": m.group(), "entity_type": "AGE_NUM", "start": s, "end": e})
 
-    # Step 2: DOB — only the date portion
+    # DOB — date portion only
     for m in DOB_PHRASE_RE.finditer(text):
-        date_str = m.group(1)
         s, e = m.start(1), m.end(1)
         if not overlaps(s, e, seen):
             seen.append((s, e))
-            entities.append({"original": date_str, "entity_type": "DOB", "start": s, "end": e})
+            entities.append({"original": m.group(1), "entity_type": "DOB", "start": s, "end": e})
 
-    # Step 3: DEPARTMENT — full phrase including "dept" word
+    # Department — full phrase including dept word
     for m in DEPT_RE.finditer(text):
-        s, e = m.start(), m.end()
-        # trim trailing space
         matched = m.group().rstrip()
-        e = s + len(matched)
+        s, e = m.start(), m.start() + len(matched)
         if not overlaps(s, e, seen):
             seen.append((s, e))
             entities.append({"original": matched, "entity_type": "ORG", "start": s, "end": e})
 
-    # Step 4: spaCy NER
+    # "X is a boy/girl" — mark as PERSON before spaCy tags as ORG
+    for m in PERSON_CONTEXT_RE.finditer(text):
+        name = m.group(1)
+        s, e = m.start(1), m.end(1)
+        if not overlaps(s, e, seen):
+            seen.append((s, e))
+            entities.append({"original": name, "entity_type": "PERSON", "start": s, "end": e})
+
+    # spaCy NER
     doc = nlp(text)
     for ent in doc.ents:
         if ent.label_ in SKIP_LABELS:
@@ -122,15 +166,15 @@ def main():
         if overlaps(ent.start_char, ent.end_char, seen):
             continue
         label = ent.label_
-        if label in ("GPE", "LOC") and is_likely_person(ent.text):
+        if label in ("ORG", "GPE", "LOC") and is_likely_person(ent.text):
             label = "PERSON"
-        if label == "DATE":
-            if re.search(r'\b\d{1,3}\s*(year|yr|age)', ent.text, re.IGNORECASE):
-                continue
+        if label == "DATE" and re.search(r'\b\d{1,3}\s*(year|yr|age)', ent.text, re.IGNORECASE):
+            continue
         seen.append((ent.start_char, ent.end_char))
-        entities.append({"original": ent.text, "entity_type": label, "start": ent.start_char, "end": ent.end_char})
+        entities.append({"original": ent.text, "entity_type": label,
+                         "start": ent.start_char, "end": ent.end_char})
 
-    # Step 5: "named X" pattern
+    # named X pattern
     for m in NAMED_RE.finditer(text):
         name = m.group(1)
         s, e = m.start(1), m.end(1)

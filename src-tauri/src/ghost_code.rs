@@ -26,21 +26,16 @@ pub fn obfuscate_output(text: &mut String) -> bool {
             ghosted.push('\u{200C}'); // ZWNJ — invisible, breaks token boundaries
         }
 
-        // Inject zero-width joiners less frequently
         if i > 0 && i % rng.gen_range(150..250) == 0 {
             ghosted.push('\u{200D}'); // ZWJ
         }
     }
 
-    // Prepend BOM-like marker (confuses naive text processors)
     *text = format!("{}", ghosted);
 
     true
 }
 
-/// Obfuscate internal scoring parameters — called during module init
-/// Returns scrambled parameter table so static analysis of the binary
-/// cannot directly read the Risk Score weights
 pub fn obfuscate_scoring_params(params: &[f32]) -> Vec<u64> {
     let mut rng = rand::thread_rng();
     params.iter().map(|&p| {

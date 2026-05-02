@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTheme } from "../ThemeProvider";
 
 export default function Header({ onSettings }) {
   const [session, setSession] = useState(null);
+  const { currentTheme, autoRotate } = useTheme();
   useEffect(() => {
     const fetch = async () => {
       try { setSession(await invoke("get_session_info")); } catch (_) {}
@@ -22,6 +24,12 @@ export default function Header({ onSettings }) {
         <div className="brand-classified"><span>CLASSIFIED TOOL</span></div>
       </div>
       <div className="header-status">
+        {/* Theme indicator */}
+        <div className="theme-indicator" title={currentTheme.personality}>
+          <span className="theme-indicator-dot" />
+          <span>{currentTheme.name}</span>
+          {autoRotate && <span className="theme-indicator-rotate">⟳</span>}
+        </div>
         {session && (
           <>
             <StatusPill label="SESSION" value={`#${session.session_id}`} />

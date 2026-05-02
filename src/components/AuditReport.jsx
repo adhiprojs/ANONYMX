@@ -1,6 +1,6 @@
 export default function AuditReport({ report, processingTime }) {
   if (!report) return null;
-  const verdictColor = {SAFE:"var(--green)",MARGINAL:"var(--amber)",UNSAFE:"var(--red)"}[report.verdict]||"var(--amber)";
+  const verdictColor = {SAFE:"var(--safe-color)",MARGINAL:"var(--accent)",UNSAFE:"var(--unsafe-color)"}[report.verdict]||"var(--accent)";
   const scorePercent = (report.score*100).toFixed(0);
   const arcDash = (report.score*220).toFixed(0);
   return (
@@ -15,7 +15,7 @@ export default function AuditReport({ report, processingTime }) {
             <path d="M10,55 A45,45 0 0,1 90,55" fill="none" stroke="var(--border)" strokeWidth="6" strokeLinecap="round"/>
             <path d="M10,55 A45,45 0 0,1 90,55" fill="none" stroke={verdictColor} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${arcDash} 220`} style={{transition:"stroke-dasharray 0.8s ease"}}/>
             <text x="50" y="52" textAnchor="middle" className="gauge-pct" fill={verdictColor}>{scorePercent}%</text>
-            <text x="50" y="62" textAnchor="middle" className="gauge-label" fill="var(--text-dim)">PRIVACY SCORE</text>
+            <text x="50" y="62" textAnchor="middle" className="gauge-label" fill="var(--text-muted)">PRIVACY SCORE</text>
           </svg>
         </div>
         <div className="k-stats">

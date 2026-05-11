@@ -4,35 +4,31 @@
 //  remain unreadable to an attacker."
 //
 // Implementation:
-// 1. Zero-width Unicode injection in output (breaks naive regex/parsers)
-// 2. Decoy variable names in output metadata (misleads RE tools)
-// 3. Timing jitter to prevent timing-based analysis of the scoring algorithm
-// 4. Output structure scrambling (field order randomized per session)
+// 1. Decoy variable names in output metadata (misleads RE tools)
+// 2. Timing jitter to prevent timing-based analysis of the scoring algorithm
+// 3. Output structure scrambling (field order randomized per session)
+//
+// NOTE: Zero-width Unicode injection has been intentionally removed — it was
+// corrupting the fuzzed output text by splitting bracket tokens mid-character,
+// causing display artifacts and breaking downstream parsing.
 
 use rand::Rng;
 use std::time::Duration;
 
-/// Apply ghost obfuscation to the final output text
-pub fn obfuscate_output(text: &mut String) -> bool {
-    let mut rng = rand::thread_rng();
-    let mut ghosted = String::with_capacity(text.len() + 256);
-
-    let chars: Vec<char> = text.chars().collect();
-    for (i, &ch) in chars.iter().enumerate() {
-        ghosted.push(ch);
-
-        // Inject zero-width non-joiners at irregular intervals (breaks regex)
-        if i > 0 && i % rng.gen_range(40..80) == 0 {
-            ghosted.push('\u{200C}'); // ZWNJ — invisible, breaks token boundaries
-        }
-
-        if i > 0 && i % rng.gen_range(150..250) == 0 {
-            ghosted.push('\u{200D}'); // ZWJ
-        }
-    }
-
-    *text = format!("{}", ghosted);
-
+/// Apply ghost obfuscation to the final output text.
+/// This is now a no-op on the text content itself to preserve output integrity.
+/// Obfuscation of the *algorithm* is handled at the scoring/metadata level only.
+pub fn obfuscate_output(_text: &mut String) -> bool {
+    // Previously this injected zero-width joiners/non-joiners (U+200C, U+200D)
+    // into the text at irregular intervals. While invisible in most renderers,
+    // these characters broke bracket tokens like [PERSON] into fragments when
+    // the injection landed inside a replacement tag, producing corrupted output
+    // such as "PAN: [PAN[AADHAAR]" or "Phone: [PHONE]ail: [EM[EMAIL]".
+    //
+    // Obfuscation of the runtime algorithm is achieved via:
+    //   - add_timing_jitter() on score computation paths
+    //   - obfuscate_scoring_params() on numeric weight arrays
+    // Neither of those touches the user-visible text.
     true
 }
 
@@ -54,7 +50,7 @@ pub fn add_timing_jitter() {
     std::thread::sleep(Duration::from_micros(jitter_us));
 }
 
-/// Strip ghost markers from text for clean export (legitimate users only)
+/// Strip any stray invisible markers from text (legacy cleanup).
 pub fn strip_markers(text: &str) -> String {
     text.chars()
         .filter(|&c| c != '\u{200C}' && c != '\u{200D}' && c != '\u{FEFF}')

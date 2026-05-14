@@ -151,6 +151,25 @@ async fn process_document(
         false
     };
 
+    if honey_triggered {
+        let fake_data = honey_trap::generate_fake_dataset(20).unwrap_or_else(|_| "{}".to_string());
+        let elapsed = start.elapsed().as_millis() as u64;
+        
+        secure_buffer.zeroize();
+        
+        return Ok(ProcessResult {
+            original_text: request.text.clone(),
+            fuzzed_text: "HONEY_DATA_SERVED".to_string(),
+            watermarked_text: fake_data,
+            entities: vec![],
+            k_report,
+            honey_triggered: true,
+            watermark_id: None,
+            ghost_applied: false,
+            processing_time_ms: elapsed,
+        });
+    }
+
     let (watermarked_text, watermark_id) = if request.embed_watermark {
         let session_id = state.lock().unwrap().id.clone();
         let (wm_text, wm_id) = watermark::embed(

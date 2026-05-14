@@ -121,7 +121,7 @@ fn fake_phone(rng: &mut impl Rng) -> String {
 }
 
 fn fake_salary_bracket(rng: &mut impl Rng) -> String {
-    let brackets = ["[LOWER-INCOME BRACKET]", "[MID-INCOME BRACKET]",
-                    "[UPPER-MID BRACKET]", "[HIGH-INCOME BRACKET]"];
+    let brackets = ["[LOWER-INCOME]", "[MID-INCOME]",
+                    "[UPPER-MID]", "[HIGH-INCOME]"];
     brackets[rng.gen_range(0..brackets.len())].to_string()
 }

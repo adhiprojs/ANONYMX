@@ -556,10 +556,10 @@ fn fuzz_quasi_field(text: &str, field: &str, sensitivity: u8) -> (String, Vec<Fu
 
                 let annual = val * mult;
                 let fuzzed = match annual as u64 {
-                    0..=25_000          => "[LOWER-INCOME BRACKET]",
-                    25_001..=75_000     => "[MID-INCOME BRACKET]",
-                    75_001..=300_000    => "[UPPER-MID BRACKET]",
-                    _                   => "[HIGH-INCOME BRACKET]",
+                    0..=25_000          => "[LOWER-INCOME]",
+                    25_001..=75_000     => "[MID-INCOME]",
+                    75_001..=300_000    => "[UPPER-MID]",
+                    _                   => "[HIGH-INCOME]",
                 }.to_string();
 
                 log.push(FuzzedEntity {

@@ -232,12 +232,64 @@ fn get_session_info(state: tauri::State<'_, Mutex<SessionState>>) -> serde_json:
 
 #[tauri::command]
 async fn read_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))
+    if path.to_lowercase().ends_with(".pdf") {
+        let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("sidecars/pdf_reader.py");
+
+        let output = Command::new("/home/adhithya/ANONYMX/.venv/bin/python3")
+            .arg(&script)
+            .arg("--path")
+            .arg(&path)
+            .output();
+
+        match output {
+            Ok(out) if out.status.success() => {
+                Ok(String::from_utf8_lossy(&out.stdout).to_string())
+            }
+            Ok(out) => {
+                Err(format!("PDF read failed: {}", String::from_utf8_lossy(&out.stderr)))
+            }
+            Err(e) => {
+                Err(format!("PDF reader failed to start: {}", e))
+            }
+        }
+    } else {
+        std::fs::read_to_string(&path).map_err(|e| format!("Read error: {}", e))
+    }
 }
 
 #[tauri::command]
 async fn write_file(path: String, content: String) -> Result<(), String> {
-    std::fs::write(&path, content).map_err(|e| format!("Write error: {}", e))
+    if path.to_lowercase().ends_with(".pdf") {
+        let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("sidecars/pdf_writer.py");
+
+        let mut child = Command::new("/home/adhithya/ANONYMX/.venv/bin/python3")
+            .arg(&script)
+            .arg("--path")
+            .arg(&path)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("PDF writer failed to start: {}", e))?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            std::io::Write::write_all(&mut stdin, content.as_bytes())
+                .map_err(|e| format!("Failed to write to stdin: {}", e))?;
+        }
+
+        let output = child.wait_with_output()
+            .map_err(|e| format!("Failed to wait for python script: {}", e))?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(format!("PDF write failed: {}", String::from_utf8_lossy(&output.stderr)))
+        }
+    } else {
+        std::fs::write(&path, content).map_err(|e| format!("Write error: {}", e))
+    }
 }
 
 fn main() {

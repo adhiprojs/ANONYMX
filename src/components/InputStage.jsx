@@ -42,7 +42,7 @@ export default function InputStage({ onProcess, onFileOpen, loading }) {
         <div className="file-zone" onClick={onFileOpen}>
           <div className="file-icon">◈</div>
           <p className="file-title">Click to open file</p>
-          <p className="file-types">.txt · .csv · .json · .md · .log</p>
+          <p className="file-types">.txt · .csv · .json · .md · .log · .pdf</p>
           <p className="file-note">Processed in RAM · Never written to disk</p>
           <button className="btn-process file-btn" disabled={loading}>{loading?"PROCESSING…":"OPEN & PROCESS →"}</button>
         </div>

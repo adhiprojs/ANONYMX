@@ -30,6 +30,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [honeyAlert, setHoneyAlert]   = useState(false);
   const [view, setView]               = useState("output"); // "output" | "diff" | "watermark"
+  const [inputFile, setInputFile]     = useState(null);
 
   const [config, setConfig] = useState({
     sensitivity: 1,
@@ -90,20 +91,44 @@ export default function App() {
   }, [config]);
 
   const handleFileOpen = useCallback(async () => {
-    const path = await open({
-      filters: [{ name: "Documents", extensions: ["txt","csv","json","md","log"] }],
-    });
-    if (!path) return;
-    const content = await invoke("read_file", { path: String(path) });
-    await runPipeline(content);
+    try {
+      const path = await open({
+        filters: [{ name: "Documents", extensions: ["txt","csv","json","md","log","pdf"] }],
+      });
+      if (!path) return;
+      setInputFile(path);
+      const content = await invoke("read_file", { path: String(path) });
+      await runPipeline(content);
+    } catch (e) {
+      setError(`File Open Error: ${e}`);
+    }
   }, [runPipeline]);
 
   const handleExport = useCallback(async () => {
     if (!result) return;
-    const path = await save({ defaultPath: "context_guard_output.txt" });
+    
+    let defaultPath = "anonymized_output.txt";
+    let filters = [{ name: "Text files", extensions: ["txt", "md"] }];
+
+    if (inputFile) {
+        const pathStr = String(inputFile);
+        const match = pathStr.match(/([^/\\]+)\.([^.]+)$/);
+        if (match) {
+            const filename = match[1];
+            const ext = match[2];
+            defaultPath = `${filename}_anonymized.${ext}`;
+            filters = [{ name: `${ext.toUpperCase()} File`, extensions: [ext] }];
+        } else {
+            const fallbackMatch = pathStr.match(/([^/\\]+)$/);
+            const filename = fallbackMatch ? fallbackMatch[1] : "output";
+            defaultPath = `${filename}_anonymized.txt`;
+        }
+    }
+
+    const path = await save({ defaultPath, filters });
     if (!path) return;
     await invoke("write_file", { path, content: result.watermarked_text });
-  }, [result]);
+  }, [result, inputFile]);
 
   return (
     <div className="app">
@@ -115,7 +140,7 @@ export default function App() {
         {/* Left — Input + Pipeline */}
         <aside className="left-col">
           <InputStage
-            onProcess={runPipeline}
+            onProcess={(text) => { setInputFile(null); runPipeline(text); }}
             onFileOpen={handleFileOpen}
             loading={loading}
             config={config}

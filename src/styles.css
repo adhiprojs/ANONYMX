@@ -225,7 +225,7 @@ body::before {
   border-radius: var(--radius);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   line-height: 1.6;
   padding: 0.65rem 0.75rem;
   resize: none;

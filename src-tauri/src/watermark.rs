@@ -30,22 +30,21 @@ pub fn embed(
     let wm_id = Uuid::new_v4().to_string().replace('-', "")[..16].to_string();
     let timestamp = chrono::Utc::now().to_rfc3339();
 
-    // Create fingerprint payload
+    // Create fingerprint payload (raw string, no hash)
     let payload = format!("CG:{}:{}:{}:{}", wm_id, department_tag, session_id, timestamp);
-    let fingerprint = hash_payload(&payload);
 
     // Encode fingerprint as binary string
-    let binary = bytes_to_binary(fingerprint.as_bytes());
+    let binary = bytes_to_binary(payload.as_bytes());
 
-    // Embed into text lines
-    let watermarked = encode_into_whitespace(text, &binary);
+    // Embed into text lines using zero-width characters
+    let watermarked = encode_steganographic(text, &binary);
 
     Ok((watermarked, wm_id))
 }
 
 /// Verify and extract watermark from text
 pub fn verify(text: &str) -> VerifyWatermarkResult {
-    match decode_from_whitespace(text) {
+    match decode_steganographic(text) {
         Some(binary) => {
             match binary_to_string(&binary) {
                 Some(decoded) if decoded.starts_with("CG:") => {
@@ -69,16 +68,9 @@ pub fn verify(text: &str) -> VerifyWatermarkResult {
 
 // ── Steganography Internals ───────────────────────────────────────────────────
 
-fn hash_payload(payload: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(payload.as_bytes());
-    let result = hasher.finalize();
-    general_purpose::STANDARD_NO_PAD.encode(&result[..16]) // 16 bytes = 128-bit fingerprint
-}
-
 fn bytes_to_binary(bytes: &[u8]) -> Vec<u8> {
     let mut bits = Vec::new();
-    for byte in bytes.iter().take(32) { // Embed first 32 chars = 256 bits
+    for byte in bytes.iter() {
         for i in (0..8).rev() {
             bits.push((byte >> i) & 1);
         }
@@ -97,48 +89,59 @@ fn binary_to_string(bits: &[u8]) -> Option<String> {
     String::from_utf8(bytes).ok()
 }
 
-/// Encode binary into trailing whitespace: space = 0, tab = 1
-fn encode_into_whitespace(text: &str, binary: &[u8]) -> String {
-    let lines: Vec<&str> = text.lines().collect();
-    if lines.is_empty() { return text.to_string(); }
-
-    let mut result = String::new();
-    let mut bit_idx = 0;
-
-    for (i, line) in lines.iter().enumerate() {
-        result.push_str(line.trim_end()); // Remove existing trailing whitespace
-
-        // Embed one bit per line as trailing space (0) or tab (1)
-        if bit_idx < binary.len() {
-            if binary[bit_idx] == 0 {
-                result.push(' '); // bit 0 = trailing space
-            } else {
-                result.push('\t'); // bit 1 = trailing tab
-            }
-            bit_idx += 1;
-        }
-
-        if i < lines.len() - 1 {
-            result.push('\n');
+/// Encode binary using zero-width characters: U+200B (0), U+2060 (1)
+/// Wrapped in U+FEFF delimiters, inserted after the first visible character.
+fn encode_steganographic(text: &str, binary: &[u8]) -> String {
+    if text.is_empty() {
+        return text.to_string();
+    }
+    
+    let mut stego_chars = String::new();
+    stego_chars.push('\u{FEFF}'); // Start delimiter
+    for &bit in binary.iter() {
+        if bit == 0 {
+            stego_chars.push('\u{200B}'); // Zero-width space
+        } else {
+            stego_chars.push('\u{2060}'); // Word joiner
         }
     }
+    stego_chars.push('\u{FEFF}'); // End delimiter
 
-    result
+    // Insert after the first character if possible, otherwise just prepend
+    let mut chars = text.chars();
+    if let Some(first_char) = chars.next() {
+        let mut result = String::new();
+        result.push(first_char);
+        result.push_str(&stego_chars);
+        result.extend(chars);
+        result
+    } else {
+        format!("{}{}", stego_chars, text)
+    }
 }
 
-/// Decode binary from trailing whitespace
-fn decode_from_whitespace(text: &str) -> Option<Vec<u8>> {
+/// Decode binary from zero-width characters
+fn decode_steganographic(text: &str) -> Option<Vec<u8>> {
+    let mut in_payload = false;
     let mut bits = Vec::new();
 
-    for line in text.lines() {
-        if let Some(last_char) = line.chars().last() {
-            match last_char {
-                ' ' => bits.push(0),
-                '\t' => bits.push(1),
-                _ => {} // No watermark bit on this line
+    for ch in text.chars() {
+        if ch == '\u{FEFF}' {
+            if in_payload {
+                // End delimiter found
+                break;
+            } else {
+                // Start delimiter found
+                in_payload = true;
+            }
+        } else if in_payload {
+            if ch == '\u{200B}' {
+                bits.push(0);
+            } else if ch == '\u{2060}' {
+                bits.push(1);
             }
         }
     }
 
-    if bits.len() >= 64 { Some(bits) } else { None }
+    if bits.is_empty() { None } else { Some(bits) }
 }

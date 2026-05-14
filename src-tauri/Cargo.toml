@@ -3,6 +3,7 @@ name = "context-guard"
 version = "1.0.0"
 description = "Context-Guard"
 edition = "2021"
+default-run = "context-guard"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

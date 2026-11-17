@@ -1,9 +1,9 @@
 [package]
-name = "context-guard"
+name = "anonymx"
 version = "1.0.0"
-description = "Context-Guard"
+description = "AnonymX"
 edition = "2021"
-default-run = "context-guard"
+default-run = "anonymx"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

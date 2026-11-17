@@ -326,5 +326,5 @@ fn main() {
             write_file,
         ])
         .run(tauri::generate_context!())
-        .expect("Context-Guard failed to start");
+        .expect("AnonymX failed to start");
 }

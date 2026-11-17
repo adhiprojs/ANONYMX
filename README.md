@@ -1,4 +1,4 @@
-# Context-Guard
+# AnonymX
 ### Zero-Trust Local Data Anonymization · Privacy by Design
 
 > "We don't lock the data — we change it. No key exists to steal."
@@ -7,7 +7,7 @@
 
 ## What It Does
 
-Context-Guard transforms sensitive data into analytically-useful anonymous data using:
+AnonymX transforms sensitive data into analytically-useful anonymous data using:
 - **Smart Fuzzing** — generalizes specific values into categories ("22 yrs" → "20–25")
 - **NER + Quasi-ID Detection** — spaCy en_core_web_lg + regex for names, Aadhaar, PAN, email, phone
 - **K-Anonymity Auditor** — mathematical proof no individual can be singled out
@@ -48,7 +48,7 @@ cargo tauri build
 ## Project Structure
 
 ```
-context-guard/
+anonymx/
 ├── src/                        # React frontend (Vite)
 │   ├── App.jsx                 # Root + pipeline orchestration
 │   ├── styles.css              # Classified-document aesthetic
